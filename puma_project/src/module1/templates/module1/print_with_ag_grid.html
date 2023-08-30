@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Puma evaluation</title>
+    <!-- Include the JS for AG Grid -->
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.noStyle.js"></script>
+    <!-- Include the core CSS, this is needed by the grid -->
+    <link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-grid.css"/>
+    <!-- Include the theme CSS, only need to import the theme you are going to use -->
+    <link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-theme-alpine.css"/>
+  </head>
+  <body>
+    <div>
+      <!-- Button to demonstrate calling the grid's API. -->
+      <button onclick="deselect()">Deselect Rows</button>
+      <button onclick="">Regroupement</button>
+      <button id="sortNameAsc" onclick="sortBynameAsc()">FnameDesc->Asc</button>
+      <button id="sortNamDesc" onclick="sortBynameDesc()">FnameDesc->Desc</button>
+      <button onclick="saveSort()">Save</button>
+      <button onclick="actualise()">Refresh</button>
+
+    </div>
+
+    <!-- The div that will host the grid. ag-theme-alpine is the theme. -->
+    <!-- The gid will be the size that this element is given. -->
+    <div id="myGrid" class="ag-theme-alpine" style="height: 500px"></div>
+
+    <script >
+       class SalaryGain {
+            init(params) {
+              this.eGui = document.createElement('div');
+              this.eGui.classList.add('custom-element');
+              this.eGui.innerHTML = `
+                  <button onclick="gain_percent(${params.data.salary}, ${params.data.id})" >Name: ${params.data.name ? params.data.name : '?'}</button>
+              `;
+            }
+
+            getGui() {
+              return this.eGui;
+            }
+
+            refresh(params) {
+              return false;
+            }
+          }
+    </script>
+    <script type="text/javascript">
+
+        function gain_percent(val, id){
+          console.log("voila",id)
+
+          var rowNode = gridOptions.api.getRowNode(id);
+          var newSalary = val + val/10;
+          console.log(rowNode);
+          rowNode.setDataValue('salary', newSalary);
+
+        }
+
+
+        // Function to demonstrate calling grid's API
+        function deselect(){
+            gridOptions.api.deselectAll()
+        }
+         function actualise(){
+           gridOptions.api.setRowData(gridOptions.rowData)
+        }
+
+        document.getElementById("sortNamDesc").hidden = true;
+
+        function sortBynameAsc(){
+
+             gridOptions.columnApi.applyColumnState({
+            state: [{ colId: 'name', sort: 'asc' }],
+            defaultState: { sort: null },
+          });
+
+          document.getElementById("sortNamDesc").hidden = false;
+          document.getElementById("sortNameAsc").hidden = true;
+
+        }
+
+        function sortBynameDesc(){
+
+             gridOptions.columnApi.applyColumnState({
+            state: [{ colId: 'name', sort: 'desc' }],
+            defaultState: { sort: null },
+          });
+
+          document.getElementById("sortNamDesc").hidden = true;
+          document.getElementById("sortNameAsc").hidden = false;
+
+        }
+        var savedSort;
+
+        function saveSort() {
+          var colState = gridOptions.columnApi.getColumnState();
+          var sortState = colState
+            .filter(function (s) {
+              return s.sort != null;
+            })
+            .map(function (s) {
+              return { colId: s.colId, sort: s.sort, sortIndex: s.sortIndex };
+            });
+          savedSort = sortState;
+          console.log('saved sort', sortState);
+        }
+
+        // Grid Options are properties passed to the grid
+        const gridOptions = {
+            getRowId: params => params.data.id,
+          // each entry here represents one column
+          columnDefs: [
+            { field: "name",  sortingOrder: ['desc', 'asc'], cellRenderer: SalaryGain },
+            { field: "position" },
+            { field: "office"},
+            { field: "age" ,sort: 'desc'},
+            { field: "start_date", sortingOrder: ['asc', 'desc'] },
+            { field: "salary" },
+          ],
+
+          // default col def properties get applied to all columns
+          defaultColDef: {sortable: true, filter: true},
+           autoGroupColumnDef: {
+              comparator: (valueA, valueB, nodeA, nodeB, isDescending) => {
+                var res = valueA == valueB ? 0 : valueA > valueB ? 1 : -1;
+                return res;
+              },
+              field: 'athlete',
+              sort: 'asc',
+            },
+
+          rowSelection: 'multiple', // allow rows to be selected
+          animateRows: true, // have rows animate to new positions when sorted
+
+          // example event handler
+          onCellClicked: params => {
+            console.log('cell was clicked', params.data.id)
+
+          }
+        };
+
+        // get div to host the grid
+        const eGridDiv = document.getElementById("myGrid");
+        // new grid instance, passing in the hosting DIV and Grid Options
+        new agGrid.Grid(eGridDiv, gridOptions);
+
+        // Fetch data from server
+        fetch("http://127.0.0.1:8000/module1/users/")
+        .then(response => response.json())
+        .then(data => {
+
+          // load fetched data into grid
+          gridOptions.api.setRowData(data.results);
+        });
+    </script>
+  </body>
+</html>
